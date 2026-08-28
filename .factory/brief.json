@@ -1,0 +1,10 @@
+{
+  "slug": "tabletop-match-ledger",
+  "title": "Tabletop Match Ledger",
+  "territory": "games-creative",
+  "user": "Tabletop groups playing multi-round games with wraparound boards or cumulative scoring who need a shared, reliable match state between rounds.",
+  "smallest_useful_product": "Offline PWA with a five-second setup, configurable players, round and score tracks, lap counters, target scoring, undo history, and a shareable final receipt.",
+  "artifact_class": "pwa-offline",
+  "monetization": "one-time",
+  "constraints": "Local-first, no copyrighted game assets or rules text, user-configurable scoring."
+}
