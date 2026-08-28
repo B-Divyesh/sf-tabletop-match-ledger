@@ -1,7 +1,8 @@
 import './style.css';
-import { COLORS, lastUndoable, nextRound, rankPlayers, receipt, totals, trackState, uid, validateMatch, type Match } from './model';
+import { COLORS, lastUndoable, mergeMatches, nextRound, rankPlayers, receipt, totals, trackState, uid, validateMatch, validateSetupConfiguration, type Match } from './model';
 import { loadMatch, saveMatch } from './storage';
 import { cachedLicenseState, captureLicense, checkoutUrl, storeLicense, verifyLicense, type LicenseState } from './license';
+import { LanPairing } from './lan';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const channel = 'BroadcastChannel' in window ? new BroadcastChannel('tabletop-match-ledger') : null;
@@ -12,6 +13,13 @@ let draftPlayers = ['', ''];
 let license: LicenseState = { unlocked: false, checking: false };
 let deferredInstall: Event | null = null;
 let toastTimer = 0;
+const lan = new LanPairing(
+  incoming => {
+    try { void receivePairedMatch(incoming); }
+    catch (reason) { announce(reason instanceof Error ? reason.message : 'Could not accept the paired update.', true); }
+  },
+  connected => { render(); if (connected) lan.send(match); announce(connected ? 'Table devices paired. Changes now sync over your local network.' : 'Table device pairing disconnected.', !connected); }
+);
 
 const escapeHtml = (value: unknown) => String(value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]!);
 const dateTime = (value: string) => new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
@@ -36,14 +44,29 @@ function shell(content: string): string {
       <a class="brand" href="/" aria-label="Tabletop Match Ledger home">${icon('orbit')}<span>Match <i>Ledger</i></span></a>
       <div class="header-actions">
         <span class="connection" id="connection">${icon('wifi')}<span>${navigator.onLine ? 'Ready offline' : 'Offline'}</span></span>
+        <button class="text-button" id="sync-button" type="button">${lan.isConnected() ? 'Paired' : 'Share table'}</button>
         <button class="text-button" id="support-button" type="button">${license.unlocked ? 'Table Keeper' : 'Support'}</button>
       </div>
     </header>
     ${storageError ? `<div class="storage-alert" role="alert"><strong>Local save unavailable.</strong> ${escapeHtml(storageError)} Keep this tab open and export your match.</div>` : ''}
     ${content}
-    <footer><span>Scores stay on this device.</span><nav aria-label="Legal"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav></footer>
+    <footer><span>Scores stay at your table.</span><nav aria-label="Legal"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav></footer>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    ${supportDialog()}`;
+    ${supportDialog()}
+    ${syncDialog()}`;
+}
+
+function syncDialog(): string {
+  return `<dialog id="sync-dialog" class="dialog wide-dialog">
+    <form method="dialog"><button class="icon-button dialog-close" aria-label="Close device pairing">×</button></form>
+    <div class="eyebrow">${icon('wifi')} Local table sync</div>
+    <h2>Pair another device</h2>
+    <p>Pair directly over the same local network. No account, server, or match data leaves the table. Keep this dialog open while you pass the two short pairing codes.</p>
+    <section class="pair-step" aria-labelledby="host-pair-title"><h3 id="host-pair-title">1. Table owner</h3><button class="button secondary" id="create-offer" type="button">Create pairing code</button><label for="offer-code">Your pairing code</label><textarea id="offer-code" readonly rows="3" spellcheck="false" aria-describedby="pair-help"></textarea><label for="answer-code">Reply from joining device</label><textarea id="answer-code" rows="3" spellcheck="false"></textarea><button class="button primary" id="accept-answer" type="button">Connect device</button></section>
+    <section class="pair-step" aria-labelledby="join-pair-title"><h3 id="join-pair-title">2. Joining device</h3><label for="offer-input">Owner’s pairing code</label><textarea id="offer-input" rows="3" spellcheck="false"></textarea><button class="button secondary" id="create-answer" type="button">Create reply code</button><label for="answer-output">Your reply code</label><textarea id="answer-output" readonly rows="3" spellcheck="false"></textarea></section>
+    <p class="form-help" id="pair-help">${lan.isConnected() ? 'Paired now. Every new round, correction, or undo is shared and merged into the append-only history.' : 'For best results, use the same Wi-Fi network and copy each code exactly.'}</p>
+    <p class="field-error" id="pair-error" role="alert"></p>
+  </dialog>`;
 }
 
 function supportDialog(): string {
@@ -183,6 +206,30 @@ function render(): void {
 
 function bindCommon(): void {
   document.querySelector('#support-button')?.addEventListener('click', () => openDialog('support-dialog'));
+  document.querySelector('#sync-button')?.addEventListener('click', () => openDialog('sync-dialog'));
+  const pairError = (): HTMLElement => document.querySelector<HTMLElement>('#pair-error')!;
+  document.querySelector('#create-offer')?.addEventListener('click', async () => {
+    try {
+      pairError().textContent = '';
+      document.querySelector<HTMLTextAreaElement>('#offer-code')!.value = await lan.createOffer();
+      announce('Pairing code ready. Send it to the joining device.');
+    } catch (reason) { pairError().textContent = reason instanceof Error ? reason.message : 'Could not create a pairing code.'; }
+  });
+  document.querySelector('#create-answer')?.addEventListener('click', async () => {
+    try {
+      pairError().textContent = '';
+      const offer = document.querySelector<HTMLTextAreaElement>('#offer-input')!.value;
+      document.querySelector<HTMLTextAreaElement>('#answer-output')!.value = await lan.createAnswer(offer);
+      announce('Reply code ready. Return it to the table owner.');
+    } catch (reason) { pairError().textContent = reason instanceof Error ? reason.message : 'Could not create a reply code.'; }
+  });
+  document.querySelector('#accept-answer')?.addEventListener('click', async () => {
+    try {
+      pairError().textContent = '';
+      await lan.acceptAnswer(document.querySelector<HTMLTextAreaElement>('#answer-code')!.value);
+      announce('Connecting to the paired device…');
+    } catch (reason) { pairError().textContent = reason instanceof Error ? reason.message : 'Could not connect the paired device.'; }
+  });
   document.querySelector('#license-form')?.addEventListener('submit', async event => {
     event.preventDefault();
     const input = document.querySelector<HTMLInputElement>('#license-token')!;
@@ -210,7 +257,8 @@ function bindSetup(): void {
     const trackLength = Number(form.get('trackLength'));
     const target = form.get('target') ? Number(form.get('target')) : null;
     const maxRounds = form.get('maxRounds') ? Number(form.get('maxRounds')) : null;
-    if (!Number.isInteger(trackLength) || trackLength < 2 || trackLength > 1000) { error.textContent = 'Track length must be between 2 and 1,000.'; return; }
+    try { validateSetupConfiguration(trackLength, target, maxRounds); }
+    catch (reason) { error.textContent = reason instanceof Error ? reason.message : 'Check the match configuration.'; return; }
     const now = new Date().toISOString();
     void updateMatch({ version: 1, id: uid('match'), title: String(form.get('title')).trim() || "Tonight's match", createdAt: now, updatedAt: now, status: 'active', trackLength, target, maxRounds, players: names.map((name, i) => ({ id: uid('player'), name, color: COLORS[i] })), events: [] }, 'Match started. Pass the device when each round ends.');
   });
@@ -278,8 +326,17 @@ function bindImport(): void {
 
 async function updateMatch(next: Match | null, message: string): Promise<void> {
   match = next; render(); announce(message);
-  try { await saveMatch(next); storageError = ''; channel?.postMessage(next); }
+  try { await saveMatch(next); storageError = ''; channel?.postMessage(next); lan.send(next); }
   catch (reason) { storageError = reason instanceof Error ? reason.message : 'Storage failed.'; render(); announce('Could not save locally. Export a copy before closing.', true); }
+}
+
+async function receivePairedMatch(incoming: Match): Promise<void> {
+  const merged = mergeMatches(match, incoming);
+  match = merged;
+  render();
+  try { await saveMatch(merged); storageError = ''; }
+  catch (reason) { storageError = reason instanceof Error ? reason.message : 'Storage failed.'; render(); announce('Could not save the paired update locally. Export a copy before closing.', true); return; }
+  announce('Paired device updated the ledger.');
 }
 
 function openDialog(id: string): void { document.querySelector<HTMLDialogElement>(`#${id}`)?.showModal(); }
@@ -301,11 +358,17 @@ async function copyReceipt(): Promise<void> { if (!match) return; try { await na
 function updateConnection(): void { const el = document.querySelector<HTMLElement>('#connection'); if (el) el.innerHTML = `${icon('wifi')}<span>${navigator.onLine ? 'Ready offline' : 'Offline'}</span>`; }
 window.addEventListener('online', updateConnection); window.addEventListener('offline', updateConnection);
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredInstall = event; });
-channel?.addEventListener('message', event => { match = event.data as Match | null; render(); announce('Match updated in another tab.'); });
+channel?.addEventListener('message', event => {
+  const incoming = event.data as Match | null;
+  if (incoming === null) { match = null; render(); announce('Match cleared in another tab.'); return; }
+  try { void receivePairedMatch(validateMatch(incoming)); }
+  catch { announce('Ignored an invalid update from another tab.', true); }
+});
 
 async function start(): Promise<void> {
   captureLicense(); license = cachedLicenseState(); render();
-  try { match = await loadMatch(); } catch (reason) { storageError = reason instanceof Error ? reason.message : 'Local storage is unavailable.'; }
+  try { const saved = await loadMatch(); match = saved === null ? null : validateMatch(saved); }
+  catch (reason) { storageError = reason instanceof Error ? reason.message : 'Local storage is unavailable.'; }
   loading = false; render();
   void verifyLicense().then(result => { license = result; render(); });
   if ('serviceWorker' in navigator) {

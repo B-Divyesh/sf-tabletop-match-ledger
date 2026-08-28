@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activeEvents, lastUndoable, nextRound, receipt, totals, trackState, validateMatch, type Match } from '../src/model';
+import { activeEvents, lastUndoable, mergeMatches, nextRound, receipt, totals, trackState, validateMatch, validateSetupConfiguration, type Match } from '../src/model';
 
 const base: Match = {
   version: 1, id: 'match-1', title: 'Tuesday table', createdAt: '2026-08-28T00:00:00.000Z', updatedAt: '2026-08-28T00:00:00.000Z',
@@ -34,6 +34,20 @@ describe('score model', () => {
 
   it('rejects malformed imports', () => {
     expect(() => validateMatch({ version: 2 })).toThrow(/unsupported/);
+    expect(() => validateMatch({ ...base, events: [{ id: 'bad', kind: 'round', round: 1, scores: { a: 3 }, note: '', createdAt: base.createdAt }] })).toThrow(/event scores/);
+    expect(() => validateMatch({ ...base, players: [{ ...base.players[0] }, { ...base.players[1], id: 'a' }] })).toThrow(/players/);
     expect(validateMatch(base)).toEqual(base);
+  });
+
+  it('rejects invalid optional match limits before a match is created', () => {
+    expect(() => validateSetupConfiguration(100, -5, null)).toThrow(/Target score/);
+    expect(() => validateSetupConfiguration(100, null, 1.5)).toThrow(/Rounds/);
+    expect(() => validateSetupConfiguration(100, 250, 8)).not.toThrow();
+  });
+
+  it('merges append-only paired-device events without dropping either score', () => {
+    const left: Match = { ...base, updatedAt: '2026-08-28T01:00:00.000Z', events: [{ id: 'left', kind: 'round', round: 1, scores: { a: 8, b: 0 }, note: '', createdAt: '2026-08-28T01:00:00.000Z' }] };
+    const right: Match = { ...base, updatedAt: '2026-08-28T01:01:00.000Z', events: [{ id: 'right', kind: 'round', round: 1, scores: { a: 0, b: 5 }, note: '', createdAt: '2026-08-28T01:01:00.000Z' }] };
+    expect(totals(mergeMatches(left, right))).toEqual({ a: 8, b: 5 });
   });
 });

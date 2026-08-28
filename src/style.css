@@ -22,7 +22,7 @@
 * { box-sizing: border-box; }
 html { background: var(--felt); color: var(--ink); font-family: var(--body); font-size: 16px; min-width: 320px; }
 body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 82% 4%, color-mix(in srgb, var(--surface) 80%, transparent), transparent 28rem), var(--felt); }
-button, input { font: inherit; }
+button, input, textarea { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 a { color: var(--lime); text-underline-offset: .2em; }
 button { color: inherit; }
@@ -63,9 +63,9 @@ p { line-height: 1.55; }
 .icon-button { width: 48px; height: 48px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 50%; cursor:pointer; }
 label, legend { display: block; color: var(--ink); font-weight: 650; font-size: .9rem; margin-bottom: 8px; }
 label small { color: var(--muted); font-weight: 400; }
-input { width: 100%; min-height: 50px; border: 1px solid var(--line); background: var(--felt-deep); color: var(--ink); padding: 11px 13px; border-radius: 2px; font-size: 1rem; }
-input::placeholder { color: #8ba09a; }
-input:hover { border-color: var(--muted); }
+input, textarea { width: 100%; min-height: 50px; border: 1px solid var(--line); background: var(--felt-deep); color: var(--ink); padding: 11px 13px; border-radius: 2px; font-size: 1rem; }
+input::placeholder, textarea::placeholder { color: #8ba09a; }
+input:hover, textarea:hover { border-color: var(--muted); }
 fieldset { border: 0; padding: 0; margin: 0; }
 .field-error { min-height: 1.5em; color: var(--coral); font-weight: 650; font-size: .88rem; margin: 10px 0; }
 .form-help { color: var(--muted); font-size: .78rem; margin: 8px 0 0; }
@@ -172,6 +172,10 @@ fieldset { border: 0; padding: 0; margin: 0; }
 .receipt-actions { display:flex; gap:12px; }
 .receipt-actions .button.secondary { color:var(--felt-deep); border-color:#526b64; }
 .option-list { display:grid; gap:12px; margin-top:24px; }
+.pair-step { margin-top:28px; padding-top:20px; border-top:1px solid var(--line); display:grid; gap:10px; }
+.pair-step h3 { margin:0; font-size:1rem; }
+.pair-step .button { justify-self:start; }
+.pair-step textarea { min-height:76px; resize:vertical; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.76rem; line-height:1.35; }
 .price-row { display:flex; align-items:baseline; gap:10px; margin:24px 0 8px; }
 .price-row strong { font:700 3rem var(--display); color:var(--lime); }
 .price-row span { color:var(--muted); }

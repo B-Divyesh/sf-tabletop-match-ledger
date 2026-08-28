@@ -1,6 +1,6 @@
 # Tabletop Match Ledger
 
-Tabletop Match Ledger is a fast, offline-first score sheet for groups playing multi-round tabletop games. It keeps cumulative totals, explicit score-track laps and positions, targets, round limits, corrections, and an immutable activity trail on one shared device.
+Tabletop Match Ledger is a fast, offline-first score sheet for groups playing multi-round tabletop games. It keeps cumulative totals, explicit score-track laps and positions, targets, round limits, corrections, and an immutable activity trail. Pair two devices directly on the same local network when a table needs a shared view.
 
 Live product: <https://tabletop-match-ledger.sociobot.in>
 
@@ -17,7 +17,7 @@ It is built for tables that otherwise use paper, phone notes, or memory when a b
 - Final text receipt via Web Share or clipboard
 - JSON backup/import and CSV activity export
 - IndexedDB persistence and installable offline PWA shell
-- Same-device cross-tab updates via `BroadcastChannel`
+- Manual, serverless WebRTC pairing for direct local-network device sync, plus same-device `BroadcastChannel` updates
 - Keyboard, screen-reader, 390px mobile, and reduced-motion support
 - Optional $5 Table Keeper license for two extra themes; all functional features remain free
 
@@ -37,7 +37,7 @@ The exact production build command is `npm run build`. Static output lands in `d
 
 ## Deployment
 
-Deploy the contents of `dist/` as a static site with clean-directory routing for `/privacy/` and `/terms/`. Do not deploy repository source files. The service worker uses versioned caches; increment its `VERSION` when changing its caching behavior.
+Deploy the contents of `dist/` as a static site with clean-directory routing for `/privacy/` and `/terms/`. Do not deploy repository source files. The build generates a versioned `sw.js` with every emitted JS/CSS asset in its precache; do not replace it with a hand-written worker. Apply the included `dist/_headers` response policy on the static host (CSP, frame protection, manifest MIME type, and immutable hashed assets).
 
 The checkout and verification integration uses the Sociobot API. The factory registers the product separately; this repository contains no provider secret or product ID.
 
