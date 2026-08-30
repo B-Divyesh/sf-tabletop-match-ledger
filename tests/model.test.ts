@@ -34,8 +34,11 @@ describe('score model', () => {
 
   it('rejects malformed imports', () => {
     expect(() => validateMatch({ version: 2 })).toThrow(/unsupported/);
+    expect(() => validateMatch({ ...base, events: [{ id: 'bad', kind: 'round', round: 1, note: '', createdAt: base.createdAt }] })).toThrow(/event scores/);
     expect(() => validateMatch({ ...base, events: [{ id: 'bad', kind: 'round', round: 1, scores: { a: 3 }, note: '', createdAt: base.createdAt }] })).toThrow(/event scores/);
     expect(() => validateMatch({ ...base, players: [{ ...base.players[0] }, { ...base.players[1], id: 'a' }] })).toThrow(/players/);
+    expect(() => validateMatch({ ...base, players: [{ ...base.players[0], id: 'a\" onfocus=\"alert(1)' }, base.players[1]] })).toThrow(/identifier/);
+    expect(() => validateMatch({ ...base, players: [{ ...base.players[0], color: 'red;background:url(https://example.com)' }, base.players[1]] })).toThrow(/color/);
     expect(validateMatch(base)).toEqual(base);
   });
 

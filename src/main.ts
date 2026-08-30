@@ -1,11 +1,13 @@
 import './style.css';
 import { COLORS, lastUndoable, mergeMatches, nextRound, rankPlayers, receipt, totals, trackState, uid, validateMatch, validateSetupConfiguration, type Match } from './model';
-import { loadMatch, saveMatch } from './storage';
+import { DEMO_MATCH_KEY, REAL_MATCH_KEY, loadMatch, saveMatch } from './storage';
 import { cachedLicenseState, captureLicense, checkoutUrl, storeLicense, verifyLicense, type LicenseState } from './license';
 import { LanPairing } from './lan';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
-const channel = 'BroadcastChannel' in window ? new BroadcastChannel('tabletop-match-ledger') : null;
+const isDemo = new URLSearchParams(location.search).get('demo') === '1';
+const storageKey = isDemo ? DEMO_MATCH_KEY : REAL_MATCH_KEY;
+const channel = 'BroadcastChannel' in window ? new BroadcastChannel(isDemo ? 'tabletop-match-ledger:demo' : 'tabletop-match-ledger') : null;
 let match: Match | null = null;
 let loading = true;
 let storageError = '';
@@ -40,11 +42,12 @@ function icon(name: 'orbit' | 'plus' | 'undo' | 'share' | 'history' | 'wifi' | '
 
 function shell(content: string): string {
   return `
+    ${isDemo ? '<aside class="demo-banner" aria-label="Demo mode"><strong>Demo — sample data, nothing is saved to your ledger</strong><span><button class="text-button" id="reset-demo" type="button">Reset demo</button><button class="text-button" id="start-real" type="button">Start for real</button></span></aside>' : ''}
     <header class="site-header">
       <a class="brand" href="/" aria-label="Tabletop Match Ledger home">${icon('orbit')}<span>Match <i>Ledger</i></span></a>
       <div class="header-actions">
         <span class="connection" id="connection">${icon('wifi')}<span>${navigator.onLine ? 'Ready offline' : 'Offline'}</span></span>
-        <button class="text-button" id="sync-button" type="button">${lan.isConnected() ? 'Paired' : 'Share table'}</button>
+        ${isDemo ? '' : `<button class="text-button" id="sync-button" type="button">${lan.isConnected() ? 'Paired' : 'Share table'}</button>`}
         <button class="text-button" id="support-button" type="button">${license.unlocked ? 'Table Keeper' : 'Support'}</button>
       </div>
     </header>
@@ -61,7 +64,7 @@ function syncDialog(): string {
     <form method="dialog"><button class="icon-button dialog-close" aria-label="Close device pairing">×</button></form>
     <div class="eyebrow">${icon('wifi')} Local table sync</div>
     <h2>Pair another device</h2>
-    <p>Pair directly over the same local network. No account, server, or match data leaves the table. Keep this dialog open while you pass the two short pairing codes.</p>
+    <p>Pair directly over the same local network. No server receives match data. Keep this dialog open while you pass the two pairing codes.</p>
     <section class="pair-step" aria-labelledby="host-pair-title"><h3 id="host-pair-title">1. Table owner</h3><button class="button secondary" id="create-offer" type="button">Create pairing code</button><label for="offer-code">Your pairing code</label><textarea id="offer-code" readonly rows="3" spellcheck="false" aria-describedby="pair-help"></textarea><label for="answer-code">Reply from joining device</label><textarea id="answer-code" rows="3" spellcheck="false"></textarea><button class="button primary" id="accept-answer" type="button">Connect device</button></section>
     <section class="pair-step" aria-labelledby="join-pair-title"><h3 id="join-pair-title">2. Joining device</h3><label for="offer-input">Owner’s pairing code</label><textarea id="offer-input" rows="3" spellcheck="false"></textarea><button class="button secondary" id="create-answer" type="button">Create reply code</button><label for="answer-output">Your reply code</label><textarea id="answer-output" readonly rows="3" spellcheck="false"></textarea></section>
     <p class="form-help" id="pair-help">${lan.isConnected() ? 'Paired now. Every new round, correction, or undo is shared and merged into the append-only history.' : 'For best results, use the same Wi-Fi network and copy each code exactly.'}</p>
@@ -109,8 +112,9 @@ function setupView(): string {
   return shell(`<main id="main" class="setup-page">
     <section class="hero-copy">
       <div class="eyebrow"><span class="pip"></span> Offline table utility</div>
-      <h1>Scores that survive the next lap.</h1>
-      <p class="lede">Track rounds, board position, and every correction—without accounts, ads, or mental arithmetic.</p>
+      <h1>Track every tabletop round.</h1>
+      <p class="lede">For groups with wraparound boards, it keeps totals, laps, corrections, and paired devices in step.</p>
+      <div class="demo-action"><a class="button primary" href="/?demo=1">Try it with sample data</a><span>Opens a separate sample match.</span></div>
       <div class="hero-art">
         <picture><source srcset="/assets/score-orbit.avif" type="image/avif"/><img src="/assets/score-orbit.webp" width="768" height="512" alt="Abstract circular score tracks with colorful geometric player markers" fetchpriority="high" decoding="async"/></picture>
         <div class="art-caption"><span>Position</span><strong>37</strong><span>+</span><strong>2 laps</strong></div>
@@ -136,8 +140,32 @@ function setupView(): string {
       </form>
       <div class="import-block"><span>Already have a ledger?</span><button class="text-button" id="import-button" type="button">Import JSON</button><input class="visually-hidden" id="import-file" type="file" accept="application/json,.json" aria-label="Choose a ledger JSON file"/></div>
     </section>
-    <section class="promise-strip" aria-label="Product promises"><div><strong>0</strong><span>accounts</span></div><div><strong>∞</strong><span>undo history</span></div><div><strong>1</strong><span>shared truth</span></div></section>
+    <section class="promise-strip" aria-label="Product facts"><div><strong>Offline</strong><span>after your first visit</span></div><div><strong>Local</strong><span>saved in this browser</span></div><div><strong>$5</strong><span>optional themes only</span></div></section>
   </main>`);
+}
+
+function demoMatch(): Match {
+  return {
+    version: 1,
+    id: 'demo-sunday-table',
+    title: 'Sunday strategy table',
+    createdAt: '2026-08-30T18:00:00.000Z',
+    updatedAt: '2026-08-30T18:18:00.000Z',
+    status: 'active',
+    trackLength: 100,
+    target: 300,
+    maxRounds: 5,
+    players: [
+      { id: 'demo-ada', name: 'Ada', color: COLORS[0] },
+      { id: 'demo-bea', name: 'Bea', color: COLORS[1] },
+      { id: 'demo-cal', name: 'Cal', color: COLORS[2] }
+    ],
+    events: [
+      { id: 'demo-round-1', kind: 'round', round: 1, scores: { 'demo-ada': 86, 'demo-bea': 72, 'demo-cal': 95 }, note: 'Opening round', createdAt: '2026-08-30T18:05:00.000Z' },
+      { id: 'demo-round-2', kind: 'round', round: 2, scores: { 'demo-ada': 64, 'demo-bea': 110, 'demo-cal': 48 }, note: 'Bonus tiles counted', createdAt: '2026-08-30T18:14:00.000Z' },
+      { id: 'demo-correction', kind: 'correction', round: 3, scores: { 'demo-ada': 5, 'demo-bea': 0, 'demo-cal': 0 }, note: 'Missed end bonus', createdAt: '2026-08-30T18:18:00.000Z' }
+    ]
+  };
 }
 
 function playerBoard(match: Match): string {
@@ -188,7 +216,7 @@ function activeView(match: Match): string {
         <button class="button finish-button" id="finish-button" type="button">Finish match & share</button>`}
       </aside>
     </div>
-    <dialog id="history-dialog" class="dialog wide-dialog"><form method="dialog"><button class="icon-button dialog-close" aria-label="Close history">×</button></form><div class="eyebrow">Immutable activity log</div><h2>Every score has a trail</h2><p>Corrections and undos are appended here; prior entries are never silently changed.</p><ol class="history-list">${events || '<li class="empty-history">No rounds recorded yet.</li>'}</ol></dialog>
+    <dialog id="history-dialog" class="dialog wide-dialog"><form method="dialog"><button class="icon-button dialog-close" aria-label="Close history">×</button></form><div class="eyebrow">Append-only activity log</div><h2>Every score has a trail</h2><p>Corrections and undos are appended here; prior entries are never silently changed.</p><ol class="history-list">${events || '<li class="empty-history">No rounds recorded yet.</li>'}</ol></dialog>
     <dialog id="correction-dialog" class="dialog"><form method="dialog"><button class="icon-button dialog-close" aria-label="Close correction">×</button></form><div class="eyebrow">Append-only adjustment</div><h2>Add a correction</h2><form id="correction-form">${fields.replaceAll('score-', 'correction-').replaceAll('score-help', 'correction-help')}<label for="correction-note">Reason</label><input id="correction-note" name="note" maxlength="80" required placeholder="What changed?"/><p id="correction-help" class="form-help">The correction appears as a new history entry.</p><p class="field-error" id="correction-error" role="alert"></p><button class="button primary full" type="submit">Record correction</button></form></dialog>
     <dialog id="receipt-dialog" class="dialog receipt-dialog"><form method="dialog"><button class="icon-button dialog-close" aria-label="Close receipt">×</button></form><div class="receipt-mark">FINAL LEDGER / ${new Date(match.createdAt).getFullYear()}</div><h2>${escapeHtml(match.title)}</h2><pre id="receipt-text">${escapeHtml(receipt(match))}</pre><div class="receipt-actions"><button class="button primary" id="share-receipt" type="button">${icon('share')} Share receipt</button><button class="button secondary" id="copy-receipt" type="button">Copy text</button></div></dialog>
     <dialog id="options-dialog" class="dialog"><form method="dialog"><button class="icon-button dialog-close" aria-label="Close match options">×</button></form><div class="eyebrow">Match data</div><h2>Keep your ledger portable</h2><div class="option-list"><button class="button secondary full" id="export-json" type="button">${icon('download')} Export JSON</button><button class="button secondary full" id="export-csv" type="button">${icon('download')} Export CSV</button><button class="button secondary full" id="import-button" type="button">Import another match</button><input class="visually-hidden" id="import-file" type="file" accept="application/json,.json" aria-label="Choose a ledger JSON file"/><button class="button danger full" id="new-match" type="button">Clear & start a new match</button></div></dialog>
@@ -205,6 +233,8 @@ function render(): void {
 }
 
 function bindCommon(): void {
+  document.querySelector('#reset-demo')?.addEventListener('click', () => { void updateMatch(demoMatch(), 'Sample match reset.'); });
+  document.querySelector('#start-real')?.addEventListener('click', () => { void saveMatch(null, DEMO_MATCH_KEY).finally(() => location.assign('/')); });
   document.querySelector('#support-button')?.addEventListener('click', () => openDialog('support-dialog'));
   document.querySelector('#sync-button')?.addEventListener('click', () => openDialog('sync-dialog'));
   const pairError = (): HTMLElement => document.querySelector<HTMLElement>('#pair-error')!;
@@ -326,7 +356,7 @@ function bindImport(): void {
 
 async function updateMatch(next: Match | null, message: string): Promise<void> {
   match = next; render(); announce(message);
-  try { await saveMatch(next); storageError = ''; channel?.postMessage(next); lan.send(next); }
+  try { await saveMatch(next, storageKey); storageError = ''; channel?.postMessage(next); lan.send(next); }
   catch (reason) { storageError = reason instanceof Error ? reason.message : 'Storage failed.'; render(); announce('Could not save locally. Export a copy before closing.', true); }
 }
 
@@ -334,7 +364,7 @@ async function receivePairedMatch(incoming: Match): Promise<void> {
   const merged = mergeMatches(match, incoming);
   match = merged;
   render();
-  try { await saveMatch(merged); storageError = ''; }
+  try { await saveMatch(merged, storageKey); storageError = ''; }
   catch (reason) { storageError = reason instanceof Error ? reason.message : 'Storage failed.'; render(); announce('Could not save the paired update locally. Export a copy before closing.', true); return; }
   announce('Paired device updated the ledger.');
 }
@@ -366,8 +396,13 @@ channel?.addEventListener('message', event => {
 });
 
 async function start(): Promise<void> {
+  if (isDemo) document.title = 'Demo — Tabletop Match Ledger';
   captureLicense(); license = cachedLicenseState(); render();
-  try { const saved = await loadMatch(); match = saved === null ? null : validateMatch(saved); }
+  try {
+    const saved = await loadMatch(storageKey);
+    match = saved === null && isDemo ? demoMatch() : saved === null ? null : validateMatch(saved);
+    if (saved === null && isDemo) await saveMatch(match, storageKey);
+  }
   catch (reason) { storageError = reason instanceof Error ? reason.message : 'Local storage is unavailable.'; }
   loading = false; render();
   void verifyLicense().then(result => { license = result; render(); });

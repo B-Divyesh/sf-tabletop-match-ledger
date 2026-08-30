@@ -41,3 +41,5 @@ The hero is an original raster illustration of an abstract tabletop score orbit,
 Prompt sheet: “Top-down editorial still life of an invented abstract tabletop scoring instrument: concentric circular tracks cut from dark green felt and warm bone paper, tiny coral, sky-blue, golden and acid-lime geometric pawns, repeated lap arcs and precise score pips, tactile screen-print grain, long soft evening shadows, sophisticated generative geometry, asymmetrical crop with calm negative space, no people, no text, no letters, no numbers, no logos, no watermark, no recognizable commercial game components.”
 
 Generated with the factory Azure image model (`factory-image`) on 2026-08-28. The selected source and prompt sidecar live in `assets/src/`; optimized WebP/AVIF derivatives live in `public/assets/`. Generated imagery is original to this product under the repository MIT license.
+
+The 1200×630 social card is a center crop of that same original generated source. The 180px Apple touch icon is derived from the hand-authored score-orbit icon.

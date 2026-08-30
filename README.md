@@ -1,8 +1,10 @@
 # Tabletop Match Ledger
 
-Tabletop Match Ledger is a fast, offline-first score sheet for groups playing multi-round tabletop games. It keeps cumulative totals, explicit score-track laps and positions, targets, round limits, corrections, and an immutable activity trail. Pair two devices directly on the same local network when a table needs a shared view.
+Tabletop Match Ledger is an offline-first score sheet for groups playing multi-round tabletop games. It keeps cumulative totals, explicit laps and positions, targets, round limits, corrections, and an append-only activity trail. Pair two devices directly on the same local network when a table needs a shared view.
 
 Live product: <https://tabletop-match-ledger.sociobot.in>
+
+Try the isolated sample match: <https://tabletop-match-ledger.sociobot.in/?demo=1>
 
 ## Who it is for
 
@@ -10,7 +12,7 @@ It is built for tables that otherwise use paper, phone notes, or memory when a b
 
 ## Features
 
-- Two-to-six player setup designed to take seconds
+- Two-to-six player setup
 - Cumulative totals with derived completed laps and current board position
 - Optional target score and round limit
 - Append-only rounds, named corrections, and undo events
@@ -20,6 +22,9 @@ It is built for tables that otherwise use paper, phone notes, or memory when a b
 - Manual, serverless WebRTC pairing for direct local-network device sync, plus same-device `BroadcastChannel` updates
 - Keyboard, screen-reader, 390px mobile, and reduced-motion support
 - Optional $5 Table Keeper license for two extra themes; all functional features remain free
+
+The sample match uses its own `demo:current-match` IndexedDB key. Resetting or
+leaving the demo never changes the real `current-match` ledger.
 
 ## Develop and verify
 

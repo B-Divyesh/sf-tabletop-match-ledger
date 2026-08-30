@@ -18,8 +18,21 @@ function decode(code: string): DescriptionCode {
   } catch { throw new Error('That pairing code is not valid. Create a new code and try again.'); }
 }
 
-function settleLocalCandidate(): Promise<void> {
-  return new Promise(resolve => window.setTimeout(resolve, 750));
+function waitForIceGathering(peer: RTCPeerConnection): Promise<void> {
+  if (peer.iceGatheringState === 'complete') return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      peer.removeEventListener('icegatheringstatechange', onStateChange);
+      reject(new Error('The local network took too long to create a pairing code. Check Wi-Fi and try again.'));
+    }, 10_000);
+    const onStateChange = (): void => {
+      if (peer.iceGatheringState !== 'complete') return;
+      window.clearTimeout(timeout);
+      peer.removeEventListener('icegatheringstatechange', onStateChange);
+      resolve();
+    };
+    peer.addEventListener('icegatheringstatechange', onStateChange);
+  });
 }
 
 /**
@@ -35,7 +48,10 @@ export class LanPairing {
   private createPeer(): RTCPeerConnection {
     this.close(false);
     const peer = new RTCPeerConnection({ iceServers: [] });
-    peer.addEventListener('connectionstatechange', () => this.onStatus(peer.connectionState === 'connected'));
+    peer.addEventListener('connectionstatechange', () => {
+      if (peer.connectionState === 'connected') this.onStatus(true);
+      if (['disconnected', 'failed', 'closed'].includes(peer.connectionState)) this.onStatus(false);
+    });
     peer.addEventListener('datachannel', event => this.attachChannel(event.channel));
     this.peer = peer;
     return peer;
@@ -59,7 +75,7 @@ export class LanPairing {
     const peer = this.createPeer();
     this.attachChannel(peer.createDataChannel('tabletop-match-ledger', { ordered: true }));
     await peer.setLocalDescription(await peer.createOffer());
-    await settleLocalCandidate();
+    await waitForIceGathering(peer);
     return encode({ type: peer.localDescription!.type, sdp: peer.localDescription!.sdp });
   }
 
@@ -70,7 +86,7 @@ export class LanPairing {
     if (offer.type !== 'offer') throw new Error('Paste the table owner’s pairing code here.');
     await peer.setRemoteDescription(offer);
     await peer.setLocalDescription(await peer.createAnswer());
-    await settleLocalCandidate();
+    await waitForIceGathering(peer);
     return encode({ type: peer.localDescription!.type, sdp: peer.localDescription!.sdp });
   }
 

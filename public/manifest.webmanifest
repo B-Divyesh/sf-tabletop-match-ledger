@@ -3,7 +3,7 @@
   "short_name": "Match Ledger",
   "description": "Offline round, lap, and score tracking for tabletop groups.",
   "id": "/",
-  "start_url": "/?source=installed&v=1",
+  "start_url": "/?source=installed&v=2",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",

@@ -1,0 +1,51 @@
+[
+  {
+    "id": "score-ledger",
+    "claim": "Tracks cumulative totals, completed laps, corrections, undo history, and refresh persistence.",
+    "where": "product UI and README",
+    "test": "npm run test:e2e -- --grep @claim:score-ledger",
+    "sandbox": "fresh browser state; create a two-player match, score 237 points, reload, undo, and inspect history"
+  },
+  {
+    "id": "offline-reload",
+    "claim": "Works offline after the first visit.",
+    "where": "first-screen facts, privacy page, and README",
+    "test": "npm run test:e2e -- --grep @claim:offline-reload",
+    "sandbox": "new browser context; disable HTTP cache, install the service worker, go offline, and reload"
+  },
+  {
+    "id": "lan-sync",
+    "claim": "Pairs two devices directly and shares new scores over their local network.",
+    "where": "Share table dialog and README",
+    "test": "npm run test:e2e -- --grep @claim:lan-sync",
+    "sandbox": "two isolated browser contexts exchange a complete manual WebRTC offer and answer, then mirror a committed score"
+  },
+  {
+    "id": "demo-sandbox",
+    "claim": "Sample data is stored separately from the real ledger.",
+    "where": "Try it with sample data action and demo banner",
+    "test": "npm run test:e2e -- --grep @claim:demo-sandbox",
+    "sandbox": "save a real match, enter and reset demo mode, leave demo mode, and verify the real match is unchanged"
+  },
+  {
+    "id": "data-export",
+    "claim": "Exports the ledger as JSON and CSV.",
+    "where": "match options, privacy page, and README",
+    "test": "npm run test:e2e -- --grep @claim:data-export",
+    "sandbox": "open the seeded demo, download both formats, parse JSON, and assert one CSV row per sample event"
+  },
+  {
+    "id": "local-data",
+    "claim": "Scores stay in this browser unless the user explicitly pairs, exports, or shares them.",
+    "where": "first-screen facts, footer, privacy page, and README",
+    "test": "npm run test:e2e -- --grep @claim:local-data",
+    "sandbox": "record every request while editing the demo and assert that no request reaches another origin"
+  },
+  {
+    "id": "accessible-interface",
+    "claim": "The ledger supports keyboard use, screen readers, 390px screens, and reduced motion.",
+    "where": "README",
+    "test": "npm run test:e2e -- --grep @claim:accessible-interface",
+    "sandbox": "desktop and 390px Chromium projects; keyboard focus plus axe serious/critical scans on setup and match views"
+  }
+]

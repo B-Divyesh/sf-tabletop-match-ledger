@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readdir, writeFile } from 'node:fs/promises';
+import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 
@@ -19,7 +19,12 @@ function offlineWorker(): Plugin {
     async closeBundle() {
       const output = resolve(__dirname, 'dist');
       const precache = (await filesIn(output)).filter(file => !file.endsWith('.map') && !['/sw.js', '/_headers'].includes(file));
-      const version = createHash('sha256').update(precache.join('\n')).digest('hex').slice(0, 12);
+      const hash = createHash('sha256');
+      for (const file of precache) {
+        hash.update(file);
+        hash.update(await readFile(resolve(output, file.slice(1))));
+      }
+      const version = hash.digest('hex').slice(0, 12);
       const source = `const VERSION = 'ledger-${version}';
 const SHELL = \`${'${VERSION}'}-shell\`;
 const RUNTIME = \`${'${VERSION}'}-runtime\`;
@@ -39,10 +44,11 @@ self.addEventListener('fetch', event => {
     return;
   }
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).then(response => { const copy = response.clone(); caches.open(RUNTIME).then(cache => cache.put(request, copy)); return response; }).catch(async () => (await caches.match(request)) || (await caches.match('/index.html')) || caches.match('/offline.html')));
+    const pageAsset = url.pathname === '/' ? '/index.html' : url.pathname + (url.pathname.endsWith('/') ? 'index.html' : '/index.html');
+    event.respondWith(caches.open(SHELL).then(cache => cache.match(pageAsset)).then(cached => cached || fetch(request).then(response => { const copy = response.clone(); caches.open(RUNTIME).then(cache => cache.put(request, copy)); return response; }).catch(() => caches.match('/offline.html'))));
     return;
   }
-  event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => { if (response.ok) { const copy = response.clone(); caches.open(RUNTIME).then(cache => cache.put(request, copy)); } return response; })));
+  event.respondWith(caches.open(SHELL).then(cache => cache.match(url.pathname, { ignoreSearch: true })).then(cached => cached || caches.match(request, { ignoreSearch: true })).then(cached => cached || fetch(request).then(response => { if (response.ok) { const copy = response.clone(); caches.open(RUNTIME).then(cache => cache.put(request, copy)); } return response; })));
 });
 self.addEventListener('message', event => { if (event.data === 'SKIP_WAITING') self.skipWaiting(); });
 `;

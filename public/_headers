@@ -1,12 +1,15 @@
 /*
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; connect-src 'self' https://api.sociobot.in; form-action 'self' https://api.sociobot.in; frame-ancestors 'none'; img-src 'self' data: blob:; manifest-src 'self'; script-src 'self'; style-src 'self'; worker-src 'self'
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; connect-src 'self' https://api.sociobot.in; form-action 'self' https://api.sociobot.in; frame-ancestors 'none'; img-src 'self' data: blob:; manifest-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self'
   Permissions-Policy: camera=(), geolocation=(), microphone=(), payment=(), usb=()
   Referrer-Policy: strict-origin-when-cross-origin
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
 
-/assets/*
+/assets/main-*
   Cache-Control: public, max-age=31536000, immutable
+
+/assets/*
+  Cache-Control: public, max-age=86400
 
 /sw.js
   Cache-Control: no-cache
