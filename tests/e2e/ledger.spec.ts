@@ -16,7 +16,9 @@ test('@claim:score-ledger starts a match, wraps the track, undoes, and survives 
   await page.getByLabel('Player 1').fill('Ada');
   await page.getByLabel('Player 2').fill('Bea');
   await page.getByLabel('Target score optional').fill('400');
+  await page.getByLabel('Rounds optional').fill('2');
   await page.getByRole('button', { name: 'Start the ledger' }).click();
+  await expect(page.getByText('100-space track · first to 400 · 2 rounds')).toBeVisible();
 
   await page.locator('#round-form').getByLabel('Ada', { exact: true }).fill('237');
   await page.locator('#round-form').getByLabel('Bea', { exact: true }).fill('98');
@@ -27,11 +29,18 @@ test('@claim:score-ledger starts a match, wraps the track, undoes, and survives 
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Ada' })).toBeVisible();
   await expect(page.getByText('237', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Add correction' }).click();
+  await page.locator('#correction-form').getByLabel('Ada', { exact: true }).fill('-37');
+  await page.locator('#correction-form').getByLabel('Reason').fill('Removed a counted tile');
+  await page.getByRole('button', { name: 'Record correction' }).click();
+  await expect(page.getByText('200', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: /Undo last entry/ }).click();
+  await expect(page.getByText('237', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: /Undo last entry/ }).click();
   await expect(page.getByText('0 laps completed').first()).toBeVisible();
   await page.getByRole('button', { name: /History/ }).click();
-  await expect(page.getByText('Undo recorded')).toBeVisible();
-  await expect(page.getByText(/· Undone$/)).toBeVisible();
+  await expect(page.getByText('Undo recorded')).toHaveCount(2);
+  await expect(page.getByText(/· Undone$/)).toHaveCount(2);
 });
 
 test('@claim:accessible-interface has no serious accessibility violations in setup and match views', async ({ page }) => {
@@ -43,6 +52,11 @@ test('@claim:accessible-interface has no serious accessibility violations in set
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   let results = await new AxeBuilder({ page: page as never }).analyze();
   expect(results.violations.filter(v => ['serious', 'critical'].includes(v.impact ?? ''))).toEqual([]);
+  await page.getByRole('button', { name: 'Support' }).click();
+  await expect(page.getByRole('button', { name: 'Close support window' })).toBeFocused();
+  results = await new AxeBuilder({ page: page as never }).analyze();
+  expect(results.violations.filter(v => ['serious', 'critical'].includes(v.impact ?? ''))).toEqual([]);
+  await page.keyboard.press('Escape');
   await page.getByLabel('Player 1').fill('Ada');
   await page.getByLabel('Player 2').fill('Bea');
   await page.getByRole('button', { name: 'Start the ledger' }).click();
@@ -56,6 +70,8 @@ test('keeps legal and not-found pages semantic and free of serious accessibility
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
     await expect(page.locator('main')).toHaveCount(1);
     await expect(page.locator('h1')).toHaveCount(1);
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('link', { name: /^Skip to/ })).toBeFocused();
     const results = await new AxeBuilder({ page: page as never }).analyze();
     expect(results.violations.filter(v => ['serious', 'critical'].includes(v.impact ?? ''))).toEqual([]);
   }
@@ -135,12 +151,15 @@ test('rejects a malformed imported event without replacing the current match', a
 });
 
 test('@claim:lan-sync pairs two local devices and mirrors a newly committed score', async ({ page, browser }) => {
+  const externalRequests: string[] = [];
+  page.on('request', request => { if (new URL(request.url()).origin !== 'http://127.0.0.1:4173') externalRequests.push(request.url()); });
   await page.getByLabel('Player 1').fill('Ada');
   await page.getByLabel('Player 2').fill('Bea');
   await page.getByRole('button', { name: 'Start the ledger' }).click();
 
   const joiningContext = await browser.newContext();
   const joiningPage = await joiningContext.newPage();
+  joiningPage.on('request', request => { if (new URL(request.url()).origin !== 'http://127.0.0.1:4173') externalRequests.push(request.url()); });
   try {
     await joiningPage.goto('http://127.0.0.1:4173/');
     await page.getByRole('button', { name: 'Share table' }).click();
@@ -161,6 +180,7 @@ test('@claim:lan-sync pairs two local devices and mirrors a newly committed scor
     await page.getByRole('button', { name: 'Commit round 1' }).click();
     const adaCard = joiningPage.locator('.score-card').filter({ has: joiningPage.getByRole('heading', { name: 'Ada' }) });
     await expect(adaCard.locator('.total strong')).toHaveText('12', { timeout: 10_000 });
+    expect(externalRequests).toEqual([]);
   } finally {
     await joiningContext.close();
   }
@@ -200,6 +220,14 @@ test('@claim:data-export exports valid JSON and one CSV row per sample event', a
   const rows = (await readFile(csvPath!, 'utf8')).trim().split('\n');
   expect(rows).toHaveLength(4);
   expect(rows[0]).toContain('"Ada"');
+
+  await page.getByRole('button', { name: 'Close match options' }).click();
+  await page.getByRole('button', { name: 'Open match options' }).click();
+  page.once('dialog', dialog => void dialog.accept());
+  await page.getByRole('button', { name: 'Clear & start a new match' }).click();
+  await expect(page.getByRole('heading', { name: 'Track every tabletop round.' })).toBeVisible();
+  await page.locator('#import-file').setInputFiles(jsonPath!);
+  await expect(page.getByRole('heading', { name: 'Sunday strategy table' })).toBeVisible();
 });
 
 test('@claim:local-data sends no score data to another origin during the demo flow', async ({ page }) => {
@@ -210,4 +238,39 @@ test('@claim:local-data sends no score data to another origin during the demo fl
   await page.getByRole('button', { name: 'Commit round 3' }).click();
   await expect(page.getByText('164', { exact: true })).toBeVisible();
   expect(requests.filter(url => new URL(url).origin !== 'http://127.0.0.1:4173')).toEqual([]);
+});
+
+test('@claim:final-receipt creates a portable final score receipt', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await page.getByRole('button', { name: 'Finish match & share' }).click();
+  const receipt = page.locator('#receipt-text');
+  await expect(receipt).toBeVisible();
+  await expect(receipt).toContainText('Sunday strategy table');
+  await expect(receipt).toContainText('1. Bea — 182');
+  await expect(receipt).toContainText('Recorded offline with Tabletop Match Ledger');
+});
+
+test('@claim:optional-themes keeps core tools free and verifies the two-theme purchase', async ({ page }) => {
+  await page.getByRole('button', { name: 'Support' }).click();
+  const support = page.locator('#support-dialog');
+  await expect(support.getByText('$5', { exact: true })).toBeVisible();
+  await expect(support.getByText('one-time purchase')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Buy Table Keeper' })).toHaveAttribute('href', 'https://api.sociobot.in/api/v1/products/tabletop-match-ledger/checkout');
+  await page.getByRole('button', { name: 'Close support window' }).click();
+  await page.getByLabel('Player 1').fill('Ada');
+  await page.getByLabel('Player 2').fill('Bea');
+  await page.getByRole('button', { name: 'Start the ledger' }).click();
+  await page.getByRole('button', { name: 'Open match options' }).click();
+  await expect(page.getByRole('button', { name: 'Export JSON' })).toBeVisible();
+
+  await page.route('https://api.sociobot.in/api/v1/products/tabletop-match-ledger/verify?license=*', route => route.fulfill({ json: { valid: true, reason: 'ok', expires_at: null } }));
+  await page.evaluate(() => {
+    localStorage.setItem('sb_license:tabletop-match-ledger', 'recorded-test-license');
+    localStorage.removeItem('sb_license:tabletop-match-ledger:verdict');
+  });
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Table Keeper' })).toBeVisible();
+  await page.getByRole('button', { name: 'Table Keeper' }).click();
+  await expect(page.getByRole('radio', { name: 'Tournament blue' })).toBeVisible();
+  await expect(page.getByRole('radio', { name: 'Candle room' })).toBeVisible();
 });

@@ -1,7 +1,7 @@
 [
   {
     "id": "score-ledger",
-    "claim": "Tracks cumulative totals, completed laps, corrections, undo history, and refresh persistence.",
+    "claim": "Configures players, targets, and round limits; tracks totals, laps, corrections, undo history, and refresh persistence.",
     "where": "product UI and README",
     "test": "npm run test:e2e -- --grep @claim:score-ledger",
     "sandbox": "fresh browser state; create a two-player match, score 237 points, reload, undo, and inspect history"
@@ -29,7 +29,7 @@
   },
   {
     "id": "data-export",
-    "claim": "Exports the ledger as JSON and CSV.",
+    "claim": "Exports the ledger as JSON and CSV and imports a JSON backup.",
     "where": "match options, privacy page, and README",
     "test": "npm run test:e2e -- --grep @claim:data-export",
     "sandbox": "open the seeded demo, download both formats, parse JSON, and assert one CSV row per sample event"
@@ -47,5 +47,19 @@
     "where": "README",
     "test": "npm run test:e2e -- --grep @claim:accessible-interface",
     "sandbox": "desktop and 390px Chromium projects; keyboard focus plus axe serious/critical scans on setup and match views"
+  },
+  {
+    "id": "final-receipt",
+    "claim": "Creates a portable final text receipt.",
+    "where": "match finish action and README",
+    "test": "npm run test:e2e -- --grep @claim:final-receipt",
+    "sandbox": "finish the seeded demo and assert the visible receipt contains the ranked totals and offline provenance"
+  },
+  {
+    "id": "optional-themes",
+    "claim": "A $5 one-time Table Keeper purchase adds two themes while core scoring and exports stay free.",
+    "where": "first-screen facts, support dialog, terms, and README",
+    "test": "npm run test:e2e -- --grep @claim:optional-themes",
+    "sandbox": "assert price and checkout target, use scoring/export without a license, then replay a valid verification fixture and inspect both extra themes"
   }
 ]

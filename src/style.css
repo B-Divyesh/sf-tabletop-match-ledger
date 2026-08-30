@@ -32,7 +32,7 @@ svg { width: 1.25em; height: 1.25em; flex: none; }
 .skip-link:focus-visible { top: 16px; }
 .visually-hidden { position: absolute!important; width: 1px!important; height: 1px!important; overflow: hidden!important; clip: rect(1px,1px,1px,1px)!important; }
 .site-header { min-height: 72px; max-width: 1440px; margin: 0 auto; padding: 12px max(20px, env(safe-area-inset-left)) 12px max(20px, env(safe-area-inset-right)); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.brand { color: var(--ink); display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font: 700 1rem var(--display); text-transform: uppercase; letter-spacing: .06em; }
+.brand { color: var(--ink); min-height:44px; display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font: 700 1rem var(--display); text-transform: uppercase; letter-spacing: .06em; }
 .brand svg { width: 30px; height: 30px; color: var(--lime); }
 .brand i { font-weight: 400; font-style: normal; color: var(--muted); }
 .header-actions { display: flex; align-items: center; gap: 18px; }
@@ -44,7 +44,7 @@ svg { width: 1.25em; height: 1.25em; flex: none; }
 main { max-width: 1440px; min-height: calc(100vh - 148px); margin: 0 auto; padding: 48px clamp(20px, 4vw, 72px) 72px; }
 footer { max-width: 1440px; margin: 0 auto; padding: 24px max(20px, 4vw) max(24px, env(safe-area-inset-bottom)); border-top: 1px solid color-mix(in srgb, var(--line) 45%, transparent); display: flex; justify-content: space-between; color: var(--muted); font-size: .85rem; }
 footer nav { display:flex; gap:24px; }
-footer a { color: var(--muted); }
+footer a { color: var(--muted); min-height:44px; display:inline-flex; align-items:center; }
 h1, h2, h3, p { margin-top: 0; }
 h1, h2, h3 { font-family: var(--display); }
 h1 { margin-bottom: 16px; font-size: clamp(2.6rem, 6.5vw, 6.4rem); line-height: .95; letter-spacing: -.055em; max-width: 10ch; }
