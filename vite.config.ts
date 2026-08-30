@@ -18,7 +18,8 @@ function offlineWorker(): Plugin {
     apply: 'build',
     async closeBundle() {
       const output = resolve(__dirname, 'dist');
-      const precache = (await filesIn(output)).filter(file => !file.endsWith('.map') && !['/sw.js', '/_headers'].includes(file));
+      const hostControlFiles = ['/sw.js', '/_headers', '/staticwebapp.config.json'];
+      const precache = (await filesIn(output)).filter(file => !file.endsWith('.map') && !hostControlFiles.includes(file));
       const hash = createHash('sha256');
       for (const file of precache) {
         hash.update(file);

@@ -84,6 +84,8 @@ test('@claim:offline-reload opens from a fully precached shell while offline wit
     let cdp = await offlineContext.newCDPSession(offlinePage);
     await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
     await offlinePage.goto('http://127.0.0.1:4173/');
+    const workerSource = await (await offlinePage.request.get('/sw.js')).text();
+    expect(workerSource).not.toContain('/staticwebapp.config.json');
     await offlinePage.waitForFunction(() => navigator.serviceWorker?.controller !== null);
     await offlinePage.waitForFunction(async () => {
       const cachesForApp = await caches.keys();
